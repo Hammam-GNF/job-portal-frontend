@@ -1,18 +1,13 @@
 import { Outlet } from "react-router-dom";
-import { useAuth } from "../store/auth.store";
+import Navbar from "../components/navbar/Navbar";
 
 export default function EmployerLayout() {
-    const logout = useAuth((state) => state.logout);
-
     return (
         <div>
-            <header style={{ padding: 16, borderBottom: "1px solid #ccc" }}>
-                <button onClick={logout}>Logout</button>
-            </header>
-
-            <main style={{ padding: 16 }}>
+            <Navbar />
+            <main className="p-6">
                 <Outlet />
             </main>
         </div>
-    );
+    )
 }
