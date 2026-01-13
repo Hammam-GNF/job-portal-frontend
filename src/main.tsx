@@ -1,11 +1,20 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
 import App from './App.tsx'
-import './api/tes.ts';
+import { useAuth } from './store/auth.store.ts'
+
+function Bootstrap() {
+  const hydrate = useAuth((state) => state.hydrate);
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  return <App />;
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-)
+    <Bootstrap />
+  </StrictMode>
+);
