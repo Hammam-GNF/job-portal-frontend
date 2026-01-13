@@ -12,6 +12,7 @@ type AuthState = {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  hydrated: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -22,6 +23,7 @@ export const useAuth = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  hydrated: false,
 
   //LOGIN METHOD
   login: async (email, password) => {
@@ -37,12 +39,14 @@ export const useAuth = create<AuthState>((set) => ({
 
   //LOGOUT METHOD
   logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.clear();
 
-    set({ user: null, token: null, isAuthenticated: false });
-
-    window.location.href = "/login";
+    set({ 
+      user: null, 
+      token: null, 
+      isAuthenticated: false,
+      hydrated: true
+    });
   },
 
   //HYDRATE METHOD
@@ -51,7 +55,14 @@ export const useAuth = create<AuthState>((set) => ({
     const user = localStorage.getItem("user");
 
     if (token && user) {
-      set({ token, user: JSON.parse(user), isAuthenticated: true });
+      set({ 
+        token, 
+        user: JSON.parse(user), 
+        isAuthenticated: true, 
+        hydrated: true 
+      });
+    } else {
+      set({ hydrated: true });
     }
   },
 }));
