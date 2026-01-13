@@ -64,6 +64,11 @@ export default function LoginPage() {
                     {loading ? "Logging in..." : "Login"}
                 </button>
             </form>
+
+            <p>
+                Don't have an account?{" "}
+                <a href="/register">Register</a>
+            </p>
         </div>
     );
 }

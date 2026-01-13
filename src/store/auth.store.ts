@@ -18,7 +18,7 @@ type AuthState = {
   hydrate: () => void;
 };
 
-export const useAuth = create<AuthState>((set, get) => ({
+export const useAuth = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
