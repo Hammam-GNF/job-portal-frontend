@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { getAdminUsers, type AdminUser } from "../../api/admin.users.api";
+import { fetchAdminUsers } from "../../services/users.service";
+import type { AdminUser } from "../../api/admin.api";
+import Table from "../../components/table/Table";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -7,9 +9,9 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getAdminUsers()
+    fetchAdminUsers()
       .then((res) => {
-        setUsers(res.data.data);
+        setUsers(res.users);
       })
       .catch(() => {
         setError("Gagal mengambil data users");
@@ -22,18 +24,39 @@ export default function UsersPage() {
   if (loading) return <div>Loading users...</div>;
   if (error) return <div>{error}</div>;
 
+  const columns = [
+    { 
+      key: "name", 
+      header: "Name", 
+      render: (user: AdminUser) => user.name 
+    },
+    { 
+      key: "email", 
+      header: "Email", 
+      render: (user: AdminUser) => user.email 
+    },
+    { 
+      key: "role", 
+      header: "Role", 
+      render: (user: AdminUser) => user.role 
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (user: AdminUser) =>
+        user.is_active ? (
+          <span className="text-green-600 font-medium">Active</span>
+        ) : (
+          <span className="text-red-600 font-medium">Inactive</span>
+        ),
+    },
+  ];
+  
   return (
     <div>
-      <h1>Users</h1>
-
-      <ul>
-        {users.map((user) => (
-          <li key={user.id}>
-            {user.name} — {user.email} — {user.role} —{" "}
-            {user.is_active ? "Active" : "Inactive"}
-          </li>
-        ))}
-      </ul>
+      {" "}
+      <h1 className="text-xl font-semibold mb-4">Users</h1>{" "}
+      <Table columns={columns} data={users} />{" "}
     </div>
   );
 }
