@@ -5,8 +5,11 @@ import App from './App.tsx'
 import { useAuth } from './store/auth.store.ts'
 import './index.css'
 import { Toaster } from 'react-hot-toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-function Bootstrap() {
+const queryClient = new QueryClient();
+
+function Bootstrap() {  
   const hydrate = useAuth((state) => state.hydrate);
 
   useEffect(() => {
@@ -16,11 +19,13 @@ function Bootstrap() {
   return <App />;
 }
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <Toaster position='top-right' />
-      <Bootstrap />
+      <QueryClientProvider client={queryClient}>
+        <Toaster position="top-right" />
+        <Bootstrap />
+      </QueryClientProvider>
     </BrowserRouter>
   </StrictMode>
 );
