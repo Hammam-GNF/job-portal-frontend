@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { fetchAdminUsers } from "../../services/users.service";
+import { fetchAdminUsers, suspendUser, restoreUser } from "../../services/users.service";
 import type { AdminUser } from "../../api/admin.api";
 import Table from "../../components/table/Table";
 import Pagination from "../../components/pagination/Pagination";
-import { suspendUser, restoreUser } from "../../services/users.service";
+import { UserStatusCell } from "../../components/admin/user/UserStatusCell";
+import { ConfirmModal } from "../../components/ui/ConfirmModal";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -11,6 +12,11 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loadingAction, setLoadingAction] = useState<number | null>(null);
+  const [confirmState, setConfirmState] = useState<{
+    user: AdminUser;
+    action: "suspend" | "restore";
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,24 +44,6 @@ export default function UsersPage() {
     };
   }, [currentPage]);
 
-  const handleToggleActive = async (user: AdminUser) => {
-    try {
-      if (user.is_active) {
-        await suspendUser(user.id);
-      } else {
-        await restoreUser(user.id);
-      }
-
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.id === user.id ? { ...u, is_active: !u.is_active } : u
-        )
-      );
-
-    } catch {
-      alert("Gagal memperbarui status user");
-    }
-  };
 
   const columns = [
     {
@@ -76,42 +64,53 @@ export default function UsersPage() {
     {
       key: "status",
       header: "Status",
-      render: (user: AdminUser) =>
-        user.is_active ? (
-          <span className="text-green-600 font-medium">Active</span>
-        ) : (
-          <span className="text-red-600 font-medium">Inactive</span>
-        ),
-    },
-    {
-      key: "action",
-      header: "Action",
       render: (user: AdminUser) => (
-        <button
-          onClick={() => handleToggleActive(user)}
-          className={`px-3 py-1 rounded-md font-medium text-white ${
-            user.is_active
-              ? "bg-red-600 hover:bg-red-700"
-              : "bg-green-600 hover:bg-green-700"
-          }`}
-        >
-          {user.is_active ? "Suspend" : "Restore"}
-        </button>
+        <UserStatusCell
+          isActive={user.is_active}
+          isLoading={loadingAction === user.id}
+          onRequestAction={(action) => {
+            setConfirmState({ user, action });
+          }}
+        />
       ),
     },
   ];
 
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages) return;
-    setCurrentPage(page);
+  const executeAction = async () => {
+    if (!confirmState) return;
+
+    const { user, action } = confirmState;
+    setLoadingAction(user.id);
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id ? { ...u, is_active: action === "restore" } : u
+      )
+    );
+
+    try {
+      if (action === "suspend") {
+        await suspendUser(user.id);
+      } else {
+        await restoreUser(user.id);
+      }
+    } catch {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, is_active: action === "suspend" } : u
+        )
+      );
+      alert("Gagal memproses action");
+    } finally {
+      setLoadingAction(null);
+      setConfirmState(null);
+    }
   };
 
-  if (!loading && users.length === 0) {
-    return <div>Tidak ada user</div>;
-  }
 
   if (loading) return <div>Loading users...</div>;
   if (error) return <div>{error}</div>;
+  if (!loading && users.length === 0) return <div>Tidak ada user</div>;
 
   return (
     <div>
@@ -120,7 +119,16 @@ export default function UsersPage() {
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={handlePageChange}
+        onPageChange={setCurrentPage}
+      />
+      <ConfirmModal
+        open={!!confirmState}
+        title="Confirm Action"
+        description={`Are you sure you want to ${confirmState?.action} this user?`}
+        confirmLabel="Yes"
+        onCancel={() => setConfirmState(null)}
+        onConfirm={executeAction}
+        loading={loadingAction !== null}
       />
     </div>
   );
