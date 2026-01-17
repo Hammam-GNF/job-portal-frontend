@@ -1,112 +1,58 @@
-import { useEffect, useState } from "react";
-import { fetchAdminUsers, suspendUser, restoreUser } from "../../services/users.service";
+import { useState } from "react";
+import { suspendUser, restoreUser } from "../../services/users.service";
 import type { AdminUser } from "../../api/admin.api";
-import Table from "../../components/table/Table";
 import Pagination from "../../components/pagination/Pagination";
-import { UserStatusCell } from "../../components/admin/user/UserStatusCell";
 import { ConfirmModal } from "../../components/ui/ConfirmModal";
+import toast from "react-hot-toast";
+import { useConfirmAction } from "../../hooks/useConfirmAction";
+import { AdminUsersTable } from "../../components/admin/user/AdminUsersTable";
+import { useAdminUsers } from "../../hooks/useAdminUsers";
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const {
+    users,
+    setUsers,
+    loading,
+    error,
+    currentPage,
+    totalPages,
+    setCurrentPage,
+  } = useAdminUsers();
+
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
-  const [confirmState, setConfirmState] = useState<{
-    user: AdminUser;
-    action: "suspend" | "restore";
-  } | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const {
+    confirmState,
+    loading: confirmLoading,
+    requestAction,
+    cancel,
+    confirm,
+  } = useConfirmAction<AdminUser, "suspend" | "restore">({
+    onExecute: async (user, action) => {
+      setLoadingAction(user.id);
 
-    setLoading(true);
-    setError(null);
+      try {
+        if (action === "suspend") {
+          await suspendUser(user.id);
+          toast.success("User suspended");
+        } else {
+          await restoreUser(user.id);
+          toast.success("User restored");
+        }
 
-    fetchAdminUsers(currentPage)
-      .then((res) => {
-        if (!isMounted) return;
-        setUsers(res.users);
-        setTotalPages(res.meta.last_page);
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setError("Gagal mengambil data users");
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentPage]);
-
-
-  const columns = [
-    {
-      key: "name",
-      header: "Name",
-      render: (user: AdminUser) => user.name,
-    },
-    {
-      key: "email",
-      header: "Email",
-      render: (user: AdminUser) => user.email,
-    },
-    {
-      key: "role",
-      header: "Role",
-      render: (user: AdminUser) => user.role,
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (user: AdminUser) => (
-        <UserStatusCell
-          isActive={user.is_active}
-          isLoading={loadingAction === user.id}
-          onRequestAction={(action) => {
-            setConfirmState({ user, action });
-          }}
-        />
-      ),
-    },
-  ];
-
-  const executeAction = async () => {
-    if (!confirmState) return;
-
-    const { user, action } = confirmState;
-    setLoadingAction(user.id);
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === user.id ? { ...u, is_active: action === "restore" } : u
-      )
-    );
-
-    try {
-      if (action === "suspend") {
-        await suspendUser(user.id);
-      } else {
-        await restoreUser(user.id);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === user.id ? { ...u, is_active: action === "restore" } : u
+          )
+        );
+      } catch {
+        toast.error("Action failed");
+        throw new Error();
+      } finally {
+        setLoadingAction(null);
       }
-    } catch {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user.id ? { ...u, is_active: action === "suspend" } : u
-        )
-      );
-      alert("Gagal memproses action");
-    } finally {
-      setLoadingAction(null);
-      setConfirmState(null);
-    }
-  };
-
+    },
+  });
 
   if (loading) return <div>Loading users...</div>;
   if (error) return <div>{error}</div>;
@@ -115,20 +61,31 @@ export default function UsersPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">Users</h1>
-      <Table columns={columns} data={users} />
+
+      <AdminUsersTable
+        users={users}
+        loadingAction={loadingAction}
+        onRequestAction={requestAction}
+      />
+
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
         onPageChange={setCurrentPage}
       />
+
       <ConfirmModal
         open={!!confirmState}
-        title="Confirm Action"
+        title={
+          confirmState?.action === "suspend" ? "Suspend User" : "Restore User"
+        }
         description={`Are you sure you want to ${confirmState?.action} this user?`}
         confirmLabel="Yes"
-        onCancel={() => setConfirmState(null)}
-        onConfirm={executeAction}
-        loading={loadingAction !== null}
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={confirmLoading}
+        onCancel={cancel}
+        onConfirm={confirm}
       />
     </div>
   );

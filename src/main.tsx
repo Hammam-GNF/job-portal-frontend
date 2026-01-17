@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { useAuth } from './store/auth.store.ts'
 import './index.css'
+import { Toaster } from 'react-hot-toast'
 
 function Bootstrap() {
   const hydrate = useAuth((state) => state.hydrate);
@@ -18,6 +19,7 @@ function Bootstrap() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
+      <Toaster position='top-right' />
       <Bootstrap />
     </BrowserRouter>
   </StrictMode>
