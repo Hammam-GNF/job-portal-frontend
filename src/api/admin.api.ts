@@ -23,6 +23,10 @@ export const getAdminUsers = (page = 1) => {
   return api.get<AdminUsersResponse>(`/admin/users?page=${page}`);
 };
 
-export const toggleUserActive = (userId: number) => {
-  return api.patch(`/admin/users/${userId}/toggle-active`);
+export const suspendUser = (userId: number) => {
+  return api.patch(`/admin/users/${userId}/suspend`);
 };
+
+export const restoreUser = (userId: number) => {
+  return api.patch(`/admin/users/${userId}/restore`);
+}
